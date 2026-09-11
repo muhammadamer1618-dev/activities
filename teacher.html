@@ -38,22 +38,54 @@ const firebaseConfig = {
   messagingSenderId: "424006812800",
   appId: "1:424006812800:web:8cc74d4dc23844fe82d265"
 };
-firebase.initializeApp(firebaseConfig);const db=firebase.firestore();let editId=null;
-function addQuestion(q="",a=""){const d=document.createElement("div");d.className="qrow";d.innerHTML=`<input class="qq" placeholder="السؤال / الكلمة" value="${esc(q)}"><input class="aa" placeholder="الإجابة" value="${esc(a)}"><button class="btn danger" onclick="this.parentElement.remove()">×</button>`;questions.appendChild(d)}
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+let editId=null;
+const titleEl=document.getElementById("title");
+const subjectEl=document.getElementById("subject");
+const gameTypeEl=document.getElementById("gameType");
+const questionsEl=document.getElementById("questions");
+const activitiesEl=document.getElementById("activities");
+const statusEl=document.getElementById("status");
+function addQuestion(q="",a=""){const d=document.createElement("div");d.className="qrow";d.innerHTML=`<input class="qq" placeholder="السؤال / الكلمة" value="${esc(q)}"><input class="aa" placeholder="الإجابة" value="${esc(a)}"><button class="btn danger" onclick="this.parentElement.remove()">×</button>`;questionsEl.appendChild(d)}
 function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
-function show(m){status.style.display="block";status.textContent=m;setTimeout(()=>status.style.display="none",3500)}
+function show(m,isError=false){statusEl.style.display="block";statusEl.style.background=isError?"#8c3340":"#ffffff12";statusEl.textContent=m;setTimeout(()=>statusEl.style.display="none",5000)}
 async function saveActivity(){
- const t=title.value.trim(); const qs=[...document.querySelectorAll(".qrow")].map(r=>({question:r.querySelector(".qq").value.trim(),answer:r.querySelector(".aa").value.trim()})).filter(x=>x.question);
- if(!t)return alert("اكتب عنوان النشاط."); if(!qs.length)return alert("أضف سؤالًا واحدًا على الأقل.");
- const data={title:t,subject:subject.value.trim(),gameType:gameType.value,questions:qs,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
- if(editId){await db.collection("activities").doc(editId).set(data,{merge:true});show("تم تحديث النشاط ✓")}
- else{data.createdAt=firebase.firestore.FieldValue.serverTimestamp();await db.collection("activities").add(data);show("تم حفظ النشاط ✓")}
- clearForm();loadActivities();
+ try{
+   const t=titleEl.value.trim();
+   const qs=[...document.querySelectorAll(".qrow")].map(r=>({
+     question:r.querySelector(".qq").value.trim(),
+     answer:r.querySelector(".aa").value.trim()
+   })).filter(x=>x.question);
+   if(!t){alert("اكتب عنوان النشاط.");return}
+   if(!qs.length){alert("أضف سؤالًا واحدًا على الأقل.");return}
+   const data={
+     title:t,
+     subject:subjectEl.value.trim(),
+     gameType:gameTypeEl.value,
+     questions:qs,
+     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+   };
+   if(editId){
+     await db.collection("activities").doc(editId).set(data,{merge:true});
+     show("تم تحديث النشاط ✓");
+   }else{
+     data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+     const ref=await db.collection("activities").add(data);
+     show("تم حفظ النشاط بنجاح ✓ رقم النشاط: "+ref.id);
+   }
+   clearForm();
+   await loadActivities();
+ }catch(err){
+   console.error("SAVE ERROR:",err);
+   show("تعذر الحفظ: "+(err.message||err),true);
+   alert("تعذر حفظ النشاط\n"+(err.message||err));
+ }
 }
-function clearForm(){editId=null;title.value="";subject.value="اللغة الإنجليزية";questions.innerHTML="";for(let i=0;i<6;i++)addQuestion()}
-async function loadActivities(){const s=await db.collection("activities").orderBy("createdAt","desc").get().catch(()=>db.collection("activities").get());activities.innerHTML="";if(s.empty){activities.innerHTML="<p>لا توجد أنشطة بعد.</p>";return}
- s.forEach(doc=>{const a=doc.data(),url=new URL("boxes.html",location.href);url.searchParams.set("id",doc.id);const el=document.createElement("div");el.className="item";el.innerHTML=`<div><h4>${esc(a.title)}</h4><small>${esc(a.subject||"")} • ${(a.questions||[]).length} سؤال</small><div class="link">${url.href}</div></div><div class="actions"><button class="btn" onclick="location.href='boxes.html?id=${doc.id}'">تشغيل</button><button class="btn alt" onclick="copyLink('${url.href}')">نسخ</button><button class="btn alt" onclick="editActivity('${doc.id}')">تعديل</button><button class="btn danger" onclick="delActivity('${doc.id}')">حذف</button></div>`;activities.appendChild(el)})}
-async function editActivity(id){const d=await db.collection("activities").doc(id).get();if(!d.exists)return;const a=d.data();editId=id;title.value=a.title||"";subject.value=a.subject||"";questions.innerHTML="";(a.questions||[]).forEach(x=>addQuestion(x.question,x.answer));scrollTo({top:0,behavior:"smooth"})}
+function clearForm(){editId=null;titleEl.value="";subjectEl.value="اللغة الإنجليزية";questionsEl.innerHTML="";for(let i=0;i<6;i++)addQuestion()}
+async function loadActivities(){let s;try{s=await db.collection("activities").orderBy("createdAt","desc").get()}catch(e){try{s=await db.collection("activities").get()}catch(err){console.error("LOAD ERROR:",err);show("تعذر قراءة الأنشطة: "+(err.message||err),true);return}}activitiesEl.innerHTML="";if(s.empty){activitiesEl.innerHTML="<p>لا توجد أنشطة بعد.</p>";return}
+ s.forEach(doc=>{const a=doc.data(),url=new URL("boxes.html",location.href);url.searchParams.set("id",doc.id);const el=document.createElement("div");el.className="item";el.innerHTML=`<div><h4>${esc(a.title)}</h4><small>${esc(a.subject||"")} • ${(a.questions||[]).length} سؤال</small><div class="link">${url.href}</div></div><div class="actions"><button class="btn" onclick="location.href='boxes.html?id=${doc.id}'">تشغيل</button><button class="btn alt" onclick="copyLink('${url.href}')">نسخ</button><button class="btn alt" onclick="editActivity('${doc.id}')">تعديل</button><button class="btn danger" onclick="delActivity('${doc.id}')">حذف</button></div>`;activitiesEl.appendChild(el)})}
+async function editActivity(id){const d=await db.collection("activities").doc(id).get();if(!d.exists)return;const a=d.data();editId=id;titleEl.value=a.title||"";subjectEl.value=a.subject||"";questionsEl.innerHTML="";(a.questions||[]).forEach(x=>addQuestion(x.question,x.answer));scrollTo({top:0,behavior:"smooth"})}
 async function delActivity(id){if(!confirm("حذف النشاط؟"))return;await db.collection("activities").doc(id).delete();loadActivities()}
 function copyLink(x){navigator.clipboard.writeText(x).then(()=>show("تم نسخ رابط النشاط ✓"))}
 clearForm();loadActivities();
