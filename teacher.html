@@ -1,0 +1,60 @@
+<!doctype html><html lang="ar" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>إدارة الأنشطة التعليمية</title>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial;background:linear-gradient(135deg,#062f2b,#0b4a40 50%,#082e3d);color:#fff;min-height:100vh}
+.top{height:6px;background:linear-gradient(90deg,#0b4a40,#d6a84b,#0b4a40)}.wrap{width:min(1150px,94%);margin:auto;padding:18px 0}
+header{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:18px}.brand{display:flex;align-items:center;gap:13px}.logo{width:68px;height:68px;background:#fff;border-radius:18px;padding:6px}.logo img{width:100%;height:100%;object-fit:contain}.brand h2{margin:0}.brand p{margin:5px 0;color:#cfe0dc;font-size:13px}
+.panel{background:#ffffff12;border:1px solid #ffffff22;backdrop-filter:blur(12px);border-radius:22px;padding:20px;box-shadow:0 16px 35px #00181535}
+.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}.field{margin-bottom:13px}label{display:block;margin-bottom:6px;color:#e9f1ef;font-size:13px;font-weight:bold}
+input,textarea,select{width:100%;padding:11px 12px;border:1px solid #ffffff25;border-radius:12px;background:#fff;color:#20333a;font-family:inherit;font-size:14px;outline:none}textarea{resize:vertical;min-height:80px}
+.btn{border:0;border-radius:12px;padding:11px 15px;font-family:inherit;font-weight:bold;cursor:pointer;background:#d6a84b;color:#17342f}.btn.alt{background:#ffffff18;color:#fff;border:1px solid #ffffff25}.btn.danger{background:#8c3340;color:#fff}.actions{display:flex;gap:8px;flex-wrap:wrap}
+.qhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.qrow{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px}.qrow button{width:42px}
+.list{margin-top:18px}.item{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;background:#ffffff0d;border:1px solid #ffffff18;padding:13px;border-radius:15px;margin-bottom:9px}.item h4{margin:0 0 5px}.item small{color:#c9dbd7}
+.link{font-size:12px;color:#f3d77e;word-break:break-all}.status{padding:10px;margin-top:10px;border-radius:12px;display:none;background:#ffffff12}
+@media(max-width:800px){.grid{grid-template-columns:1fr}.qrow{grid-template-columns:1fr}.qrow button{width:100%}}
+</style></head><body><div class="top"></div><div class="wrap">
+<header><div class="brand"><div class="logo"><img src="logo.jpeg"></div><div><h2>إدارة الأنشطة التعليمية</h2><p>أنشئ النشاط مرة واحدة وشغّله بأكثر من لعبة</p></div></div><a class="btn alt" href="index.html">الرئيسية</a></header>
+<div class="grid">
+<section class="panel"><h3>➕ إنشاء نشاط جديد</h3>
+<div class="field"><label>عنوان النشاط</label><input id="title" placeholder="مثال: Unit 1 Vocabulary"></div>
+<div class="field"><label>المادة</label><input id="subject" value="اللغة الإنجليزية"></div>
+<div class="field"><label>نوع اللعبة</label><select id="gameType"><option value="boxes">🎁 الصناديق</option></select></div>
+<div class="qhead"><h3>الأسئلة والإجابات</h3><button class="btn alt" onclick="addQuestion()">+ سؤال</button></div>
+<div id="questions"></div>
+<div class="actions"><button class="btn" onclick="saveActivity()">💾 حفظ النشاط</button><button class="btn alt" onclick="clearForm()">نشاط جديد</button></div>
+<div id="status" class="status"></div>
+</section>
+<section class="panel"><h3>📚 الأنشطة المحفوظة</h3><p style="color:#cfe0dc;font-size:13px">يمكنك فتح اللعبة أو نسخ رابطها وإرساله للطلاب.</p><div id="activities" class="list"></div></section>
+</div></div>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBFdUYzpL_sP_Kb-gWkmKRJe1CcMbdFBDY",
+  authDomain: "activities-bfe9c.firebaseapp.com",
+  projectId: "activities-bfe9c",
+  storageBucket: "activities-bfe9c.firebasestorage.app",
+  messagingSenderId: "424006812800",
+  appId: "1:424006812800:web:8cc74d4dc23844fe82d265"
+};
+firebase.initializeApp(firebaseConfig);const db=firebase.firestore();let editId=null;
+function addQuestion(q="",a=""){const d=document.createElement("div");d.className="qrow";d.innerHTML=`<input class="qq" placeholder="السؤال / الكلمة" value="${esc(q)}"><input class="aa" placeholder="الإجابة" value="${esc(a)}"><button class="btn danger" onclick="this.parentElement.remove()">×</button>`;questions.appendChild(d)}
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;")}
+function show(m){status.style.display="block";status.textContent=m;setTimeout(()=>status.style.display="none",3500)}
+async function saveActivity(){
+ const t=title.value.trim(); const qs=[...document.querySelectorAll(".qrow")].map(r=>({question:r.querySelector(".qq").value.trim(),answer:r.querySelector(".aa").value.trim()})).filter(x=>x.question);
+ if(!t)return alert("اكتب عنوان النشاط."); if(!qs.length)return alert("أضف سؤالًا واحدًا على الأقل.");
+ const data={title:t,subject:subject.value.trim(),gameType:gameType.value,questions:qs,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+ if(editId){await db.collection("activities").doc(editId).set(data,{merge:true});show("تم تحديث النشاط ✓")}
+ else{data.createdAt=firebase.firestore.FieldValue.serverTimestamp();await db.collection("activities").add(data);show("تم حفظ النشاط ✓")}
+ clearForm();loadActivities();
+}
+function clearForm(){editId=null;title.value="";subject.value="اللغة الإنجليزية";questions.innerHTML="";for(let i=0;i<6;i++)addQuestion()}
+async function loadActivities(){const s=await db.collection("activities").orderBy("createdAt","desc").get().catch(()=>db.collection("activities").get());activities.innerHTML="";if(s.empty){activities.innerHTML="<p>لا توجد أنشطة بعد.</p>";return}
+ s.forEach(doc=>{const a=doc.data(),url=new URL("boxes.html",location.href);url.searchParams.set("id",doc.id);const el=document.createElement("div");el.className="item";el.innerHTML=`<div><h4>${esc(a.title)}</h4><small>${esc(a.subject||"")} • ${(a.questions||[]).length} سؤال</small><div class="link">${url.href}</div></div><div class="actions"><button class="btn" onclick="location.href='boxes.html?id=${doc.id}'">تشغيل</button><button class="btn alt" onclick="copyLink('${url.href}')">نسخ</button><button class="btn alt" onclick="editActivity('${doc.id}')">تعديل</button><button class="btn danger" onclick="delActivity('${doc.id}')">حذف</button></div>`;activities.appendChild(el)})}
+async function editActivity(id){const d=await db.collection("activities").doc(id).get();if(!d.exists)return;const a=d.data();editId=id;title.value=a.title||"";subject.value=a.subject||"";questions.innerHTML="";(a.questions||[]).forEach(x=>addQuestion(x.question,x.answer));scrollTo({top:0,behavior:"smooth"})}
+async function delActivity(id){if(!confirm("حذف النشاط؟"))return;await db.collection("activities").doc(id).delete();loadActivities()}
+function copyLink(x){navigator.clipboard.writeText(x).then(()=>show("تم نسخ رابط النشاط ✓"))}
+clearForm();loadActivities();
+</script></body></html>
