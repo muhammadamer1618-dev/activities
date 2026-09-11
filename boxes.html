@@ -1,0 +1,24 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لعبة الصناديق</title><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:Tahoma,Arial;color:#fff;background:radial-gradient(circle at 15% 15%,#d6a84b22,transparent 22%),linear-gradient(135deg,#062f2b,#0b4a40 55%,#082e3d);overflow-x:hidden}.wrap{width:min(1100px,94%);margin:auto;padding:16px}.head{text-align:center}.logo{width:70px;height:70px;background:#fff;padding:6px;border-radius:18px;object-fit:contain}.head h1{margin:8px 0 4px}.head p{margin:0 0 14px;color:#cfe0dc}.boxes{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.box{min-height:125px;border:1px solid #ffffff25;background:#ffffff12;border-radius:22px;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;transition:.25s;box-shadow:0 14px 30px #001b1830}.box:hover{transform:translateY(-5px) scale(1.02);border-color:#d6a84b}.gift{font-size:43px}.num{margin-top:7px;color:#f2d57f;font-weight:bold}.box.used{opacity:.35;pointer-events:none;transform:scale(.96)}
+.modal{position:fixed;inset:0;background:#001d1acc;display:none;align-items:center;justify-content:center;padding:18px;z-index:10}.card{width:min(650px,95%);background:#fff;color:#17342f;border-radius:25px;padding:28px;text-align:center;box-shadow:0 25px 60px #0008}.card h2{font-size:27px;margin:0 0 20px}.answer{display:none;background:#f6edda;border:1px solid #d6a84b;padding:17px;border-radius:15px;font-size:22px;margin:15px 0}.btn{border:0;border-radius:12px;padding:11px 18px;font-family:inherit;font-weight:bold;cursor:pointer;background:#d6a84b;color:#17342f;margin:4px}.close{background:#173f3a;color:#fff}.done{text-align:center;padding:30px;font-size:25px;color:#f2d57f}
+@media(max-width:700px){.boxes{grid-template-columns:repeat(2,1fr)}.box{min-height:105px}}
+</style></head><body><div class="wrap"><div class="head"><img class="logo" src="logo.jpeg"><h1 id="title">🎁 لعبة الصناديق</h1><p id="sub">اختر صندوقًا واكتشف السؤال</p></div><div id="boxes" class="boxes"></div><div id="done"></div></div>
+<div id="modal" class="modal"><div class="card"><h2 id="question"></h2><button class="btn" onclick="answer.style.display='block'">👀 إظهار الإجابة</button><div id="answer" class="answer"></div><button class="btn close" onclick="closeCard()">✓ إغلاق الصندوق</button></div></div>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBFdUYzpL_sP_Kb-gWkmKRJe1CcMbdFBDY",
+  authDomain: "activities-bfe9c.firebaseapp.com",
+  projectId: "activities-bfe9c",
+  storageBucket: "activities-bfe9c.firebasestorage.app",
+  messagingSenderId: "424006812800",
+  appId: "1:424006812800:web:8cc74d4dc23844fe82d265"
+};
+firebase.initializeApp(firebaseConfig);const db=firebase.firestore();let data=null,current=null,used=new Set();
+async function init(){const id=new URLSearchParams(location.search).get("id");if(!id){boxes.innerHTML="<div class='done'>رابط النشاط غير صحيح</div>";return}const d=await db.collection("activities").doc(id).get();if(!d.exists){boxes.innerHTML="<div class='done'>النشاط غير موجود</div>";return}data=d.data();title.textContent="🎁 "+data.title;sub.textContent=(data.subject||"")+" • اختر صندوقًا";render()}
+function render(){boxes.innerHTML="";(data.questions||[]).forEach((q,i)=>{const b=document.createElement("div");b.className="box"+(used.has(i)?" used":"");b.innerHTML=`<div class="gift">🎁</div><div class="num">الصندوق ${i+1}</div>`;b.onclick=()=>openCard(i);boxes.appendChild(b)});if(used.size===(data.questions||[]).length&&used.size){done.innerHTML="<div class='done'>🏆 أحسنت! تم فتح جميع الصناديق</div>"}}
+function openCard(i){current=i;question.textContent=data.questions[i].question;answer.textContent=data.questions[i].answer||"—";answer.style.display="none";modal.style.display="flex"}
+function closeCard(){used.add(current);modal.style.display="none";render()}
+init();
+</script></body></html>
